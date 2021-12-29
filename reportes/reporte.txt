@@ -1,0 +1,66 @@
+// console.log(process.argv);
+// console.log(__dirname);
+
+const fs = require('fs');
+const carbone = require('carbone');
+const Sequelize = require('sequelize');
+
+//Option 1: Passing parameters separately
+const sequelize = new Sequelize('dsm51','root','', {
+    host: '127.0.0.1',
+    dialect: 'mysql'
+});
+
+sequelize
+    .authenticate()
+    .then(() => {
+        sequelize.query(
+            `select 
+            fl.nombre_practica
+            ,direcciones.direccion
+            ,gl.grupo
+            ,fl.fecha_formato
+            ,asignaturas.asignatura
+            ,laboratorios.abreviatura laboratorio_taller
+            ,gl.sabado_inicio inicio
+            ,gl.sabado_fin fin
+            ,fl.numero_equipos_trabajo
+            ,fl.objetivo
+            ,fl.observaciones
+            ,users.name docente
+        from 
+            formatos_laboratorios fl
+            INNER JOIN grupos_laboratorios gl ON fl.grupo_laboratorio_id = gl.id
+            INNER JOIN direcciones ON gl.direccion_id = direcciones.id
+            INNER JOIN asignaturas ON fl.asignatura_id = asignaturas.id
+            INNER JOIN laboratorios ON gl.laboratorio_id = laboratorios.id
+            INNER JOIN users ON fl.docente_id = users.id
+        where 
+            fl.id = :id`
+        , {replacements:{id:process.argv[2]}
+        , type: sequelize.QueryTypes.SELECT})
+    .then(datos => {
+        var data = {
+            nombre_practica:datos[0].nombre_practica
+            , direccion:datos[0].direccion
+            , grupo:datos[0].grupo
+            , fecha_formato:datos[0].fecha_formato
+            , asignatura:datos[0].asignatura
+            , laboratorio_taller:datos[0].laboratorio_taller
+            , inicio:datos[0].inicio
+            , fin:datos[0].fin
+            , numero_equipos_trabajo:datos[0].numero_equipos_trabajo
+            , objetivo:datos[0].objetivo
+            , observaciones:datos[0].observaciones
+            , docente:datos[0].docente
+        };
+        var ruta = __dirname;
+        carbone.render(`${ruta}/${datos[0].archivo_formato}`, data, function(err, result){
+            if (err) return console.log(err);
+            fs.writeFileSync(process.argv[3], result);
+        });
+    })
+})
+.catch(err => {
+    console.error('Unable to connect to the database:', err);
+});
